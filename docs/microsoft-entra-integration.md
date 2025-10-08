@@ -400,3 +400,12 @@ For issues:
 - **Azure AD**: [Microsoft Support](https://support.microsoft.com)
 - **Keycloak**: [Keycloak Community](https://github.com/keycloak/keycloak/discussions)
 
+## Keycloak 26 notes
+
+- When running behind a reverse proxy (Traefik/Nginx) that terminates TLS (edge proxy), set:
+  - `KC_HTTP_ENABLED=true`
+  - `KC_PROXY_HEADERS=xforwarded`
+  - `KC_HOSTNAME=<your-public-host>`
+  - Optionally `KC_HTTP_RELATIVE_PATH=/auth` if your clients still call legacy `/auth/...` URLs.
+- Avoid v1 hostname options in v26+ (e.g. `KC_HOSTNAME_URL`, `KC_HOSTNAME_ADMIN_URL`, `KC_HOSTNAME_STRICT_BACKCHANNEL`). Prefer strict hostname via `KC_HOSTNAME` and `keycloak.hostname.strict` in values.
+

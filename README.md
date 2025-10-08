@@ -23,6 +23,35 @@ This Helm chart deploys Keycloak on a Kubernetes cluster.
 
 ## Installation
 
+### Install from public OCI registry
+
+The chart is publicly available at `oci://quixpublic.azurecr.io/helm/keycloak`.
+
+Install a specific version (recommended):
+
+```bash
+helm install keycloak oci://quixpublic.azurecr.io/helm/keycloak \
+  --version 1.1.1 \
+  --namespace keycloak --create-namespace
+```
+
+Install latest available version:
+
+```bash
+helm install keycloak oci://quixpublic.azurecr.io/helm/keycloak \
+  --namespace keycloak --create-namespace
+```
+
+Upgrade:
+
+```bash
+helm upgrade keycloak oci://quixpublic.azurecr.io/helm/keycloak \
+  --version 1.1.1 \
+  --namespace keycloak
+```
+
+Note: No login is required for this public registry.
+
 ### Basic Installation
 
 ```bash
