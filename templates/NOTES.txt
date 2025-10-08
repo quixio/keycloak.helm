@@ -1,0 +1,70 @@
+******************************************************
+*  Keycloak has been installed successfully!         *
+******************************************************
+
+1. Get the application URL by running these commands:
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "keycloak.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "keycloak.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "keycloak.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.service.port }}
+{{- else if contains "ClusterIP" .Values.service.type }}
+  echo "Visit http://127.0.0.1:8080 to access Keycloak"
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "keycloak.fullname" . }} 8080:{{ .Values.service.port }}
+{{- end }}
+
+2. Admin credentials:
+   Username: {{ .Values.keycloak.admin.username }}
+   {{- if .Values.keycloak.admin.existingSecret }}
+   Password: Stored in secret {{ .Values.keycloak.admin.existingSecret }}
+   {{- else }}
+   Password: {{ .Values.keycloak.admin.password }}
+   
+   ⚠️  WARNING: Using default password. Please change it immediately in production!
+   {{- end }}
+
+3. Database:
+   {{- if .Values.postgresql.enabled }}
+   Using bundled PostgreSQL
+   - Service: {{ include "keycloak.fullname" . }}-postgresql:{{ .Values.postgresql.service.port }}
+   - Database: {{ .Values.keycloak.database.database }}
+   - User/Password secret: {{ include "keycloak.fullname" . }}-postgresql (keys: username, password)
+   - Data path: /var/lib/postgresql/data/pgdata
+   {{- else }}
+   Using external database at {{ .Values.keycloak.database.host }}:{{ .Values.keycloak.database.port }}
+   {{- end }}
+
+4. Useful commands:
+   # View logs
+   kubectl logs -f deployment/{{ include "keycloak.fullname" . }} -n {{ .Release.Namespace }}
+   
+   # View pods
+   kubectl get pods -l app.kubernetes.io/name={{ include "keycloak.name" . }} -n {{ .Release.Namespace }}
+   
+   # PostgreSQL pods (bundled)
+   kubectl get pods -l app.kubernetes.io/name={{ include "keycloak.name" . }}-postgresql -n {{ .Release.Namespace }}
+   
+   # PostgreSQL logs (bundled)
+   kubectl logs -f statefulset/{{ include "keycloak.fullname" . }}-postgresql -n {{ .Release.Namespace }}
+   
+   # Port-forward PostgreSQL (bundled)
+   kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "keycloak.fullname" . }}-postgresql 5432:{{ .Values.postgresql.service.port }}
+
+   # Get admin password (if using secret)
+   kubectl get secret {{ include "keycloak.adminSecretName" . }} -n {{ .Release.Namespace }} -o jsonpath="{.data.password}" | base64 --decode
+
+   # Reset PostgreSQL data (bundled) - DANGEROUS: deletes data
+   kubectl delete pvc data-{{ include "keycloak.fullname" . }}-postgresql-0 -n {{ .Release.Namespace }}
+
+For more information, visit: https://www.keycloak.org/documentation
+

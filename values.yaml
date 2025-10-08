@@ -1,0 +1,197 @@
+# Default values for keycloak
+replicaCount: 1
+
+image:
+  repository: quay.io/keycloak/keycloak
+  pullPolicy: IfNotPresent
+  tag: "26.4.0"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+
+service:
+  type: ClusterIP
+  port: 8080
+  httpsPort: 8443
+  annotations: {}
+
+ingress:
+  enabled: true
+  className: ""
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: 'true'
+    kubernetes.io/ingress.provider: traefik
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  labels:
+    app: quix
+  hosts:
+    - host: keycloak.url
+      paths:
+        - path: /
+          pathType: Prefix
+  # tls:
+  #   - secretName: keycloak-tls
+  #     hosts:
+  #       - keycloak.example.com
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1024Mi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+persistence:
+  enabled: false
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  annotations: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Keycloak specific configuration
+keycloak:
+  # Admin credentials
+  admin:
+    username: admin
+    password: admin
+    # Use existingSecret to avoid storing password in values
+    existingSecret: ""
+    existingSecretKey: "password"
+  
+  # Database configuration
+  database:
+    vendor: postgres
+    host: postgresql
+    port: 5432
+    database: keycloak
+    username: keycloak
+    password: keycloak
+    # Use existingSecret to avoid storing password in values
+    existingSecret: ""
+    existingSecretUsernameKey: "username"
+    existingSecretPasswordKey: "password"
+    # Connection pool settings
+    poolInitialSize: 5
+    poolMaxSize: 20
+    poolMinSize: 5
+  
+  # Proxy settings (for running behind reverse proxy)
+  proxy:
+    enabled: true
+    mode: edge # edge, reencrypt, or passthrough
+  
+  # Hostname settings
+  hostname:
+    strict: true
+    strictBackchannel: true
+  
+  # Cache settings
+  cache:
+    stack: ""
+  
+  # Health checks
+  health:
+    enabled: true
+  
+  # Metrics
+  metrics:
+    enabled: false
+  
+  # Additional environment variables
+  extraEnv:
+    - name: KC_PROXY_HEADERS
+      value: xforwarded
+    - name: KC_HTTP_ENABLED
+      value: "true"
+    - name: KC_HOSTNAME
+      value: keycloak.url
+    # - name: KC_HTTP_RELATIVE_PATH
+    #   value: /auth
+    # - name: KEYCLOAK_LOGLEVEL
+    #   value: INFO
+    # HTTP access log y categorías en DEBUG
+    - name: KC_HTTP_ACCESS_LOG
+      value: "true"
+
+    # - name: QUARKUS_LOG_LEVEL
+    #   value: DEBUG
+    # - name: QUARKUS_LOG_CATEGORY__io_undertow_request__LEVEL
+    #   value: DEBUG
+    # - name: QUARKUS_LOG_CATEGORY__io_undertow_server__LEVEL
+    #   value: DEBUG
+    # - name: QUARKUS_LOG_CATEGORY__org_keycloak_services__LEVEL
+    #   value: DEBUG
+    # - name: QUARKUS_LOG_CATEGORY__org_keycloak_http__LEVEL
+    #   value: DEBUG
+  
+  # Additional startup parameters
+  extraArgs: []
+    # - "--spi-theme-static-max-age=-1"
+    # - "--spi-theme-cache-themes=false"
+  
+  # Custom themes (using init containers)
+  themes:
+    enabled: false
+    # volumeName: keycloak-themes
+    # initContainer:
+    #   image: busybox
+    #   command: []
+
+postgresql:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "15"
+    pullPolicy: IfNotPresent
+  service:
+    port: 5432
+  persistence:
+    enabled: true
+    size: 8Gi
+    storageClass: ""
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 250m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+
+
+
+

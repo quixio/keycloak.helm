@@ -1,0 +1,147 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "keycloak.fullname" . }}
+  labels:
+    {{- include "keycloak.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "keycloak.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "keycloak.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "keycloak.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args:
+          - start
+          {{- range .Values.keycloak.extraArgs }}
+          - {{ . }}
+          {{- end }}
+        env:
+          # Admin credentials
+          - name: KEYCLOAK_ADMIN
+            value: {{ .Values.keycloak.admin.username | quote }}
+          - name: KEYCLOAK_ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "keycloak.adminSecretName" . }}
+                key: {{ .Values.keycloak.admin.existingSecretKey | default "password" }}
+          
+          # Database configuration
+          - name: KC_DB
+            value: {{ .Values.keycloak.database.vendor | quote }}
+          - name: KC_DB_URL_HOST
+            value: {{ include "keycloak.databaseHost" . | quote }}
+          - name: KC_DB_URL_PORT
+            value: {{ .Values.keycloak.database.port | quote }}
+          - name: KC_DB_URL_DATABASE
+            value: {{ .Values.keycloak.database.database | quote }}
+          - name: KC_DB_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "keycloak.databaseSecretName" . }}
+                key: {{ .Values.keycloak.database.existingSecretUsernameKey | default "username" }}
+          - name: KC_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "keycloak.databaseSecretName" . }}
+                key: {{ .Values.keycloak.database.existingSecretPasswordKey | default "password" }}
+          
+          # Connection pool settings
+          - name: KC_DB_POOL_INITIAL_SIZE
+            value: {{ .Values.keycloak.database.poolInitialSize | quote }}
+          - name: KC_DB_POOL_MAX_SIZE
+            value: {{ .Values.keycloak.database.poolMaxSize | quote }}
+          - name: KC_DB_POOL_MIN_SIZE
+            value: {{ .Values.keycloak.database.poolMinSize | quote }}
+          
+          # Java options
+          - name: JAVA_OPTS_APPEND
+            value: "-Djgroups.dns.query={{ include "keycloak.fullname" . }}-headless"
+          
+          # Server configuration (Keycloak 24+ recommended via KC_* envs)
+          - name: KC_HOSTNAME_STRICT
+            value: {{ .Values.keycloak.hostname.strict | default false | quote }}
+          {{- if .Values.keycloak.health.enabled }}
+          - name: KC_HEALTH_ENABLED
+            value: "true"
+          {{- end }}
+          {{- if .Values.keycloak.metrics.enabled }}
+          - name: KC_METRICS_ENABLED
+            value: "true"
+          {{- end }}
+          {{- if .Values.keycloak.cache.stack }}
+          - name: KC_CACHE_STACK
+            value: {{ .Values.keycloak.cache.stack | quote }}
+          {{- end }}
+          
+          {{- with .Values.keycloak.extraEnv }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+        
+        ports:
+          - name: http
+            containerPort: 8080
+            protocol: TCP
+          - name: https
+            containerPort: 8443
+            protocol: TCP
+          {{- if .Values.keycloak.metrics.enabled }}
+          - name: metrics
+            containerPort: 9000
+            protocol: TCP
+          {{- end }}
+
+        
+
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        
+        {{- if .Values.persistence.enabled }}
+        volumeMounts:
+          - name: data
+            mountPath: /opt/keycloak/data
+        {{- end }}
+      
+      {{- if .Values.persistence.enabled }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "keycloak.fullname" . }}
+      {{- end }}
+      
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
