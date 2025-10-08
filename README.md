@@ -440,10 +440,8 @@ keycloak:
 
 ## Supported Databases
 
-- PostgreSQL (recommended)
-- MySQL/MariaDB
-- Oracle
-- Microsoft SQL Server
+- PostgreSQL
+
 
 Configure the database vendor in `keycloak.database.vendor`.
 
