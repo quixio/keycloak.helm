@@ -263,15 +263,6 @@ Then access: http://localhost:8080
 - **Username**: admin
 - **Password**: admin (change in production!)
 
-## Keycloak 26 notes
-
-- Health endpoints moved under `/q/health`:
-  - Liveness: `/q/health/live`
-  - Readiness: `/q/health/ready`
-  - Startup: `/q/health/started`
-  - If you set `KC_HTTP_RELATIVE_PATH=/auth`, health paths become `/auth/q/health/*`.
-- With Traefik/Nginx terminating TLS (edge proxy): set `KC_HTTP_ENABLED=true`, `KC_PROXY_HEADERS=xforwarded`, and `KC_HOSTNAME` to your public host. Leave `ingress.className` empty unless you want to render it.
-- Probes are disabled by default in this chart (set to null). Enable them with the paths above if desired.
 
 ## Troubleshooting
 

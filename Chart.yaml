@@ -12,7 +12,7 @@ keywords:
   - authorization
 home: https://www.keycloak.org/
 sources:
-  - https://github.com/keycloak/keycloak
+  - https://github.com/quixio/keycloak.helm
 maintainers:
   - name: Quique
     email: quique@quix.io
