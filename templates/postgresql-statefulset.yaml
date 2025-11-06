@@ -14,6 +14,10 @@ spec:
       app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
+      {{- with .Values.postgresql.annotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       labels:
         app.kubernetes.io/name: {{ include "keycloak.name" . }}-postgresql
         app.kubernetes.io/instance: {{ .Release.Name }}

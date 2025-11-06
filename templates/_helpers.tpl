@@ -76,6 +76,8 @@ Create the name of the database secret
 {{- define "keycloak.databaseSecretName" -}}
 {{- if .Values.keycloak.database.existingSecret }}
 {{- .Values.keycloak.database.existingSecret }}
+{{- else if .Values.postgresql.enabled }}
+{{- include "keycloak.fullname" . }}-postgresql
 {{- else }}
 {{- include "keycloak.fullname" . }}-db
 {{- end }}
