@@ -2,7 +2,7 @@ apiVersion: v2
 name: keycloak
 description: A Helm chart for Keycloak - Open Source Identity and Access Management
 type: application
-version: 1.1.1
+version: 1.1.2
 appVersion: "26.4.0"
 keywords:
   - keycloak
@@ -16,4 +16,6 @@ sources:
 maintainers:
   - name: Quique
     email: quique@quix.io
+  - name: Peter Nagy
+    email: peter@quix.io
 

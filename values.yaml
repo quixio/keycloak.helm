@@ -109,16 +109,23 @@ keycloak:
     poolMaxSize: 20
     poolMinSize: 5
   
-  # Proxy settings (for running behind reverse proxy)
+  # Proxy settings (for running behind reverse proxy like Traefik/Nginx)
+  # When enabled, automatically configures KC_HTTP_ENABLED and KC_PROXY_HEADERS
   proxy:
     enabled: true
-    mode: edge # edge, reencrypt, or passthrough
-  
+    # Headers to use for proxy forwarding (xforwarded, forwarded)
+    headers: xforwarded
+
   # Hostname settings
   hostname:
+    # The public hostname for Keycloak (e.g., keycloak.example.com)
+    # Set via KC_HOSTNAME environment variable
+    url: keycloak.url
+    # Enforce strict hostname validation
     strict: true
-    strictBackchannel: true
-  
+    # Optional: Set a relative path if using legacy /auth URLs
+    # relativePath: /auth
+
   # Cache settings
   cache:
     stack: ""
@@ -132,30 +139,15 @@ keycloak:
     enabled: false
   
   # Additional environment variables
-  extraEnv:
-    - name: KC_PROXY_HEADERS
-      value: xforwarded
-    - name: KC_HTTP_ENABLED
-      value: "true"
-    - name: KC_HOSTNAME
-      value: keycloak.url
-    # - name: KC_HTTP_RELATIVE_PATH
-    #   value: /auth
+  # Note: Proxy and hostname settings are configured via keycloak.proxy.* and keycloak.hostname.*
+  extraEnv: []
+    # - name: KC_HTTP_ACCESS_LOG
+    #   value: "true"
     # - name: KEYCLOAK_LOGLEVEL
     #   value: INFO
-    # HTTP access log y categorías en DEBUG
-    - name: KC_HTTP_ACCESS_LOG
-      value: "true"
-
     # - name: QUARKUS_LOG_LEVEL
     #   value: DEBUG
     # - name: QUARKUS_LOG_CATEGORY__io_undertow_request__LEVEL
-    #   value: DEBUG
-    # - name: QUARKUS_LOG_CATEGORY__io_undertow_server__LEVEL
-    #   value: DEBUG
-    # - name: QUARKUS_LOG_CATEGORY__org_keycloak_services__LEVEL
-    #   value: DEBUG
-    # - name: QUARKUS_LOG_CATEGORY__org_keycloak_http__LEVEL
     #   value: DEBUG
   
   # Additional startup parameters
@@ -166,10 +158,18 @@ keycloak:
   # Custom themes (using init containers)
   themes:
     enabled: false
-    # volumeName: keycloak-themes
-    # initContainer:
-    #   image: busybox
-    #   command: []
+    volumeName: keycloak-themes
+    initContainer:
+      image: busybox:1.36-musl
+      command: []
+      volumeMounts: []
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          cpu: 50m
+          memory: 64Mi
 
 postgresql:
   enabled: true
@@ -177,6 +177,7 @@ postgresql:
     repository: postgres
     tag: "15"
     pullPolicy: IfNotPresent
+  annotations: {}
   service:
     port: 5432
   persistence:

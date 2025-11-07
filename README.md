@@ -101,9 +101,23 @@ make install
 |-----------|-------------|---------|
 | `keycloak.admin.username` | Admin username | `admin` |
 | `keycloak.admin.password` | Admin password | `admin` |
+| `keycloak.admin.existingSecret` | Existing secret for admin password | `""` |
 | `keycloak.database.vendor` | Database type | `postgres` |
 | `keycloak.database.host` | Database host | `postgresql` |
+| `keycloak.database.port` | Database port | `5432` |
 | `keycloak.database.database` | Database name | `keycloak` |
+| `keycloak.database.username` | Database username | `keycloak` |
+| `keycloak.database.password` | Database password | `keycloak` |
+| `keycloak.database.existingSecret` | Existing secret for database credentials | `""` |
+| `keycloak.proxy.enabled` | Enable proxy mode (for reverse proxy) | `true` |
+| `keycloak.proxy.headers` | Proxy headers type (xforwarded or forwarded) | `xforwarded` |
+| `keycloak.hostname.url` | Public hostname for Keycloak | `keycloak.url` |
+| `keycloak.hostname.strict` | Enforce strict hostname validation | `true` |
+| `keycloak.hostname.relativePath` | Relative path for legacy /auth URLs | `""` |
+| `keycloak.cache.stack` | Cache stack configuration | `""` |
+| `keycloak.health.enabled` | Enable health checks | `true` |
+| `keycloak.metrics.enabled` | Enable metrics endpoint | `false` |
+| `keycloak.themes.enabled` | Enable custom themes via init container | `false` |
 
 ### Ingress
 
@@ -119,9 +133,53 @@ make install
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `postgresql.enabled` | Deploy PostgreSQL | `true` |
-| `postgresql.auth.username` | PostgreSQL username | `keycloak` |
-| `postgresql.auth.password` | PostgreSQL password | `keycloak` |
-| `postgresql.auth.database` | Database name | `keycloak` |
+| `postgresql.image.repository` | PostgreSQL image repository | `postgres` |
+| `postgresql.image.tag` | PostgreSQL image tag | `15` |
+| `postgresql.annotations` | Pod annotations for PostgreSQL | `{}` |
+| `postgresql.service.port` | PostgreSQL service port | `5432` |
+| `postgresql.persistence.enabled` | Enable persistence for PostgreSQL | `true` |
+| `postgresql.persistence.size` | PostgreSQL PVC size | `8Gi` |
+| `postgresql.persistence.storageClass` | Storage class for PostgreSQL | `""` |
+
+**Note:** Database credentials are configured via `keycloak.database.*` settings, not `postgresql.auth.*`. When `postgresql.enabled: true`, the chart automatically creates a secret for PostgreSQL authentication.
+
+## Advanced Configuration
+
+### Additional Environment Variables
+
+Use `keycloak.extraEnv` for custom Keycloak environment variables not covered by the dedicated configuration sections. Common settings like proxy and hostname are now configured via dedicated `keycloak.proxy.*` and `keycloak.hostname.*` sections.
+
+```yaml
+keycloak:
+  # Dedicated configuration (preferred)
+  proxy:
+    enabled: true
+    headers: xforwarded
+  hostname:
+    url: keycloak.example.com
+    strict: true
+
+  # Use extraEnv for additional custom variables
+  extraEnv:
+    - name: KC_HTTP_ACCESS_LOG
+      value: "true"
+    - name: KEYCLOAK_LOGLEVEL
+      value: INFO
+    - name: QUARKUS_LOG_LEVEL
+      value: DEBUG
+```
+
+### Additional Startup Arguments
+
+Use `keycloak.extraArgs` to pass additional command-line arguments to Keycloak:
+
+```yaml
+keycloak:
+  extraArgs:
+    - "--spi-theme-static-max-age=-1"
+    - "--spi-theme-cache-themes=false"
+    - "--spi-connections-jpa-legacy-initialize-empty=true"
+```
 
 ## Usage Examples
 
@@ -143,9 +201,12 @@ ingress:
         - keycloak.mydomain.com
 
 keycloak:
+  hostname:
+    url: keycloak.mydomain.com
+    strict: true
   proxy:
     enabled: true
-    mode: edge
+    headers: xforwarded  # or 'forwarded' depending on your proxy
 ```
 
 ```bash
@@ -415,11 +476,15 @@ The chart includes PostgreSQL by default:
 ```yaml
 postgresql:
   enabled: true
-  auth:
+
+keycloak:
+  database:
     username: keycloak
     password: keycloak
     database: keycloak
 ```
+
+**Note:** Database credentials are configured in `keycloak.database.*`, not `postgresql.auth.*`.
 
 ### Using External Database (Production)
 
@@ -468,18 +533,41 @@ keycloak:
 
 ## Custom Themes
 
-To add custom themes, use init containers:
+To add custom themes, enable the themes feature and configure an init container:
 
 ```yaml
 keycloak:
   themes:
     enabled: true
+    volumeName: keycloak-themes  # Name of the shared volume
     initContainer:
-      image: your-themes-image
+      image: your-themes-image:latest  # Image containing your custom themes
       command:
         - sh
         - -c
-        - cp -R /themes/* /opt/keycloak/themes/
+        - cp -R /source-themes/* /themes/
+      volumeMounts: []  # Additional volume mounts if needed
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          cpu: 50m
+          memory: 64Mi
+```
+
+The init container will:
+1. Run before Keycloak starts
+2. Copy theme files to `/opt/keycloak/themes/` (mounted as emptyDir)
+3. Make themes available to the Keycloak container
+
+You can also use a ConfigMap for theme configuration:
+
+```yaml
+keycloak:
+  themes:
+    enabled: true
+    configMap: my-theme-config
 ```
 
 ## Identity Provider Integration
